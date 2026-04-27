@@ -8,20 +8,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends Factory<User>
+ * Factory pour créer des utilisateurs de test
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
+    // Variable statique pour réutiliser le même password
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    // Définir les données par défaut d'un utilisateur
     public function definition(): array
     {
         return [
@@ -33,9 +27,7 @@ class UserFactory extends Factory
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+    // Vérifier l'email par défaut
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
