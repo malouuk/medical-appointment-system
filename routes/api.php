@@ -10,6 +10,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // API Routes pour les rendez-vous
-    Route::apiResource('appointments', AppointmentApiController::class);
-    Route::get('services', [AppointmentApiController::class, 'services']);
+    Route::apiResource('appointments', AppointmentApiController::class)->names([
+        'index'   => 'api.appointments.index',
+        'store'   => 'api.appointments.store',
+        'show'    => 'api.appointments.show',
+        'update'  => 'api.appointments.update',
+        'destroy' => 'api.appointments.destroy',
+    ]);
+    Route::get('services', [AppointmentApiController::class, 'services'])->name('api.services');
 });

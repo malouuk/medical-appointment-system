@@ -7,124 +7,112 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AppointmentConfirmation;
 
 class AppointmentApiController extends Controller
 {
-    /**
-     * Get all appointments for authenticated user
-     */
+    /** Get appointments (role-filtered) */
     public function index()
     {
-        $appointments = Appointment::with(['service'])
-            ->where('user_id', Auth::id())
-            ->orderBy('appointment_date', 'desc')
-            ->get();
+        $query = Appointment::with(['service', 'user']);
+
+        if (Auth::user()->role === 'patient') {
+            $query->where('user_id', Auth::id());
+        }
+
+        $appointments = $query->orderBy('appointment_date', 'desc')->get();
 
         return response()->json([
             'success' => true,
             'data' => $appointments,
-            'message' => 'Rendez-vous récupérés avec succès'
+            'message' => 'Appointments retrieved successfully'
         ]);
     }
 
-    /**
-     * Create a new appointment
-     */
+    /** Create new appointment */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_id'       => 'required|exists:services,id',
             'appointment_date' => 'required|date|after:now',
-            'notes' => 'nullable|string|max:1000',
+            'notes'            => 'nullable|string|max:1000',
         ]);
 
         $validated['user_id'] = Auth::id();
-        $validated['status'] = 'pending';
+        $validated['status']  = 'pending';
 
         $appointment = Appointment::create($validated);
 
+        try {
+            Mail::to(Auth::user()->email)->send(new AppointmentConfirmation($appointment));
+        } catch (\Throwable $e) {
+            \Log::warning('API Email failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('service'),
-            'message' => 'Rendez-vous créé avec succès'
+            'data'    => $appointment->load('service'),
+            'message' => 'Appointment created successfully'
         ], 201);
     }
 
-    /**
-     * Get single appointment
-     */
+    /** Get single appointment */
     public function show(Appointment $appointment)
     {
-        if ($appointment->user_id !== Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorisé'
-            ], 403);
+        if (Auth::user()->role === 'patient' && $appointment->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('service')
+            'data'    => $appointment->load(['service', 'user'])
         ]);
     }
 
-    /**
-     * Update appointment
-     */
+    /** Update appointment */
     public function update(Request $request, Appointment $appointment)
     {
-        if ($appointment->user_id !== Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorisé'
-            ], 403);
+        if (Auth::user()->role === 'patient' && $appointment->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_id'       => 'required|exists:services,id',
             'appointment_date' => 'required|date|after:now',
-            'notes' => 'nullable|string|max:1000',
+            'notes'            => 'nullable|string|max:1000',
         ]);
 
         $appointment->update($validated);
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('service'),
-            'message' => 'Rendez-vous modifié avec succès'
+            'data'    => $appointment->load('service'),
+            'message' => 'Appointment updated successfully'
         ]);
     }
 
-    /**
-     * Delete appointment
-     */
+    /** Cancel appointment */
     public function destroy(Appointment $appointment)
     {
-        if ($appointment->user_id !== Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorisé'
-            ], 403);
+        if (Auth::user()->role === 'patient' && $appointment->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $appointment->update(['status' => 'cancelled']);
 
         return response()->json([
             'success' => true,
-            'message' => 'Rendez-vous annulé avec succès'
+            'message' => 'Appointment cancelled successfully'
         ]);
     }
 
-    /**
-     * Get all services
-     */
+    /** Get all services */
     public function services()
     {
-        $services = Service::all();
-
         return response()->json([
             'success' => true,
-            'data' => $services
+            'data'    => Service::all()
         ]);
     }
 }
