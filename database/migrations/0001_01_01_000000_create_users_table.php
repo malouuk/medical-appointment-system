@@ -6,9 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+    // Créer les tables
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
@@ -17,6 +15,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->enum('role', ['patient', 'medecin', 'admin'])->default('patient');
             $table->rememberToken();
             $table->timestamps();
         });
@@ -37,9 +36,7 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
+    // Supprimer les tables
     public function down(): void
     {
         Schema::dropIfExists('users');
